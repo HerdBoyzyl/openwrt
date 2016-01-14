@@ -36,7 +36,7 @@ Signed-off-by: Gabor Juhos <juhosg@openwrt.org>
 +	ath79_wmac_resources[0].start = QCA955X_WMAC_BASE;
 +	ath79_wmac_resources[0].end = QCA955X_WMAC_BASE + QCA955X_WMAC_SIZE - 1;
 +	ath79_wmac_resources[1].start = ATH79_IP2_IRQ(1);
-+	ath79_wmac_resources[1].start = ATH79_IP2_IRQ(1);
++	ath79_wmac_resources[1].end = ATH79_IP2_IRQ(1);
 +
 +	t = ath79_reset_rr(QCA955X_RESET_REG_BOOTSTRAP);
 +	if (t & QCA955X_BOOTSTRAP_REF_CLK_40)

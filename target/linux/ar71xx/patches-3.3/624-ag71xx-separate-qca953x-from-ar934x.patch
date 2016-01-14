@@ -198,7 +198,7 @@
 +	ath79_wmac_resources[0].start = QCA953X_WMAC_BASE;
 +	ath79_wmac_resources[0].end = QCA953X_WMAC_BASE + QCA953X_WMAC_SIZE - 1;
 +	ath79_wmac_resources[1].start = ATH79_IP2_IRQ(1);
-+	ath79_wmac_resources[1].start = ATH79_IP2_IRQ(1);
++	ath79_wmac_resources[1].end = ATH79_IP2_IRQ(1);
 +
 +	t = ath79_reset_rr(QCA953X_RESET_REG_BOOTSTRAP);
 +	if (t & QCA953X_BOOTSTRAP_REF_CLK_40)
