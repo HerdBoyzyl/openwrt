@@ -1228,14 +1228,12 @@ config wifi-device  wifi$devidx
 	option channel	auto
 	option macaddr	$(cat /sys/class/net/${dev}/address)
 	option hwmode	11${mode_11}
-	# REMOVE THIS LINE TO ENABLE WIFI:
-	option disabled 1
 
 config wifi-iface
 	option device	wifi$devidx
 	option network	lan
 	option mode	ap
-	option ssid	OpenWrt
+	option ssid	OpenWrt_$(cat /sys/class/net/${dev}/address|awk -F ":" '{print $4""$5""$6 }'| tr a-z A-Z)
 	option encryption none
 
 EOF
