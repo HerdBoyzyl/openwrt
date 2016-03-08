@@ -11,13 +11,17 @@ start_service() {
 	network_get_physdev LAN lan || return 1
 	network_get_physdev WAN wan || return 1
 	config_get bridge "$section" bridge
+	config_get_bool mac_snat "$section" mac_snat 0
 
 	brctl addbr $bridge
 	brctl addif $bridge $LAN
 	brctl addif $bridge $WAN
 	brctl setfd $bridge 0
 
+	local wan_macaddr=$(cat /sys/class/net/${WAN}/address)
+
 	ebtables -t broute -A BROUTING -i $WAN -p ! ipv6 -j DROP
+	[ $mac_snat -eq 0 ] || ebtables -t nat -A POSTROUTING -o $WAN -j snat --to-source $wan_macaddr
 	ifconfig $bridge up
 }
 
@@ -29,13 +33,14 @@ stop_service() {
 	network_get_physdev LAN lan || return 1
 	network_get_physdev WAN wan || return 1
 	config_get bridge "$section" bridge
+	config_get_bool mac_snat "$section" mac_snat 0
 
-	ifconfig $bridge down
-	ebtables -t broute -F
+	local wan_macaddr=$(cat /sys/class/net/${WAN}/address)
+
+	ebtables -t broute -D BROUTING -i $WAN -p ! ipv6 -j DROP
+	[ $mac_snat -eq 0 ] || ebtables -t nat -D POSTROUTING -o $WAN -j snat --to-source $wan_macaddr
 
 	brctl delif $bridge $WAN
-	brctl delif $bridge $LAN
-	brctl delbr $bridge
 }
 
 start() {
