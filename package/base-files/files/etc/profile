@@ -6,6 +6,9 @@ export HOME=$(grep -e "^${USER:-root}:" /etc/passwd | cut -d ":" -f 6)
 export HOME=${HOME:-/root}
 export PS1='\[\e[34;5m\]\u@\h\[\e[0m\]:\[\e[32;1m\]\w\[\e[0m\]\$ '
 
+alias l='ls'
+alias ll='ls -l'
+
 [ -x /bin/more ] || alias more=less
 [ -x /usr/bin/vim ] && alias vi=vim || alias vim=vi
 
