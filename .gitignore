@@ -12,9 +12,6 @@
 /logs
 /feeds
 /files
-/qca/feeds/qca
-/qca/feeds/shortcut-fe
-/qca/src/shortcut-fe
 /package/feeds
 /package/openwrt-packages
 *.orig
