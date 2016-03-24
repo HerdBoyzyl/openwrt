@@ -1,0 +1,10 @@
+--- a/arch/mips/ath79/dev-wmac.c
++++ b/arch/mips/ath79/dev-wmac.c
+@@ -367,6 +367,7 @@
+ 
+ 	if (mac_addr) {
+ 		memcpy(ath79_wmac_mac, mac_addr, sizeof(ath79_wmac_mac));
++		memcpy(((char *)ath79_wmac_data.eeprom_data + 2), mac_addr, sizeof(ath79_wmac_mac));
+ 		ath79_wmac_data.macaddr = ath79_wmac_mac;
+ 	}
+ }
