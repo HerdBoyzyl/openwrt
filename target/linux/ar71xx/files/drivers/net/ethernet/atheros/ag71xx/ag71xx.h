@@ -20,6 +20,7 @@
 #include <linux/module.h>
 #include <linux/init.h>
 #include <linux/types.h>
+#include <linux/proc_fs.h>
 #include <linux/random.h>
 #include <linux/spinlock.h>
 #include <linux/interrupt.h>
@@ -78,6 +79,7 @@
 #define AG71XX_RX_RING_SIZE_MAX		256
 
 #define AG71XX_JUMBO_LEN		9000
+#define DESC_JUMBO_PKTLEN_M		0x3FFF
 
 #ifdef CONFIG_AG71XX_DEBUG
 #define DBG(fmt, args...)	pr_debug(fmt, ## args)
@@ -201,6 +203,8 @@ struct ag71xx {
 	 */
 	struct ag71xx_buf	*ring_bufs;
 	void __iomem		*mac_base;
+	void __iomem		*sgmii_base;
+	void __iomem		*pll_base;
 	u32			msg_enable;
 
 	struct ag71xx_desc	*stop_desc;
@@ -279,9 +283,16 @@ static inline struct ag71xx_platform_data *ag71xx_get_pdata(struct ag71xx *ag)
 #define AG71XX_REG_INT_ENABLE	0x0198
 #define AG71XX_REG_INT_STATUS	0x019c
 
+#define AG71XX_REG_FIFO_THRESH	0x01a4
 #define AG71XX_REG_FIFO_DEPTH	0x01a8
 #define AG71XX_REG_RX_SM	0x01b0
 #define AG71XX_REG_TX_SM	0x01b4
+
+#define AG71XX_REG_IG_ACL	0x23c
+#define AG71XX_IG_ACL_FRA_DISABLE	0x60000000
+
+#define AG71XX_CFG_3_HD_VAL	0x00f00040
+#define AG71XX_FIFO_TH_HD_VAL	0x00880060
 
 #define MAC_CFG1_TXE		BIT(0)	/* Tx Enable */
 #define MAC_CFG1_STX		BIT(1)	/* Synchronize Tx Enable */
@@ -394,6 +405,46 @@ static inline struct ag71xx_platform_data *ag71xx_get_pdata(struct ag71xx *ag)
 #define RX_STATUS_OF		BIT(2)	/* Rx Overflow */
 #define RX_STATUS_BE		BIT(3)	/* Bus Error */
 
+typedef enum {
+    AG71XX_SGMII_SPEED_10T     =  0,
+    AG71XX_SGMII_SPEED_100T,
+    AG71XX_SGMII_SPEED_1000T,
+}ag71xx_sgmii_speed_t;
+
+typedef enum {
+    AG71XX_SGMII_HALF_DUPLEX = 0,
+    AG71XX_SGMII_FULL_DUPLEX,
+}ag71xx_sgmii_duplex_t;
+
+#define SGMII_PHY_MGMT_CTRL   0x1c
+#define SGMII_SPEED_SEL1_SET(x)    (x<<6)
+#define SGMII_SPEED_SEL0_SET(x)    (x<<13)
+#define SGMII_PHY_RESET_SET(x)    (x<<15)
+#define SGMII_DUPLEX_SET(x)         (x<<8)
+
+#define SGMII_CONFIG   0x34
+#define SGMII_MODE_CTRL_SET(x)   (x)
+#define SGMII_FORCE_SPEED_SET(x)   (x<<5)
+#define SGMII_SPEED_SET(x)   (x<<6)
+
+#define SGMII_RESET		0x14
+#define SGMII_RX_CLK_N	BIT(0)
+#define SGMII_TX_CLK_N	BIT(1)
+#define SGMII_RX_125M	BIT(2)
+#define SGMII_TX_125M	BIT(3)
+#define SGMII_HW_RX_125M	BIT(4)
+
+#define SGMII_DEBUG  0x58
+#define SGMII_LINK_MAX_TRY 10
+
+#define AG71XX_PLL_SGMII  0x48
+#define AG71XX_PLL_GIGE  BIT(24)
+#define AG71XX_PLL_GIGE_CLK  BIT(25)
+#define AG71XX_PLL_100 0x101
+#define AG71XX_PLL_10 0x1313
+
+#define AG71XX_INTF_CTRL_SPEED			BIT(16)
+
 static inline void ag71xx_check_reg_offset(struct ag71xx *ag, unsigned reg)
 {
 	switch (reg) {
@@ -429,11 +480,45 @@ static inline void ag71xx_wr(struct ag71xx *ag, unsigned reg, u32 value)
 	(void) __raw_readl(r);
 }
 
+static inline void ag71xx_sgmii_wr(struct ag71xx *ag, unsigned reg, u32 value)
+{
+	void __iomem *r;
+
+	r = ag->sgmii_base + reg;
+	__raw_writel(value, r);
+	/* flush write */
+	(void) __raw_readl(r);
+}
+
+static inline void ag71xx_pll_wr(struct ag71xx *ag, unsigned reg, u32 value)
+{
+	void __iomem *r;
+
+	r = ag->pll_base + reg;
+	__raw_writel(value, r);
+	/* flush write */
+	(void) __raw_readl(r);
+}
+
 static inline u32 ag71xx_rr_fast(void  __iomem *r)
 {
 	return __raw_readl(r);
 }
 
+static inline u32 ag71xx_pll_rr(struct ag71xx *ag, unsigned reg)
+{
+	void __iomem *r;
+
+	r = ag->pll_base + reg;
+	return __raw_readl(r);
+}
+static inline u32 ag71xx_sgmii_rr(struct ag71xx *ag, unsigned reg)
+{
+	void __iomem *r;
+
+	r = ag->sgmii_base + reg;
+	return __raw_readl(r);
+}
 static inline u32 ag71xx_rr(struct ag71xx *ag, unsigned reg)
 {
 	void __iomem *r;
@@ -534,5 +619,13 @@ u16 ar7240sw_phy_read(struct mii_bus *mii, unsigned phy_addr,
 		      unsigned reg_addr);
 int ar7240sw_phy_write(struct mii_bus *mii, unsigned phy_addr,
 		       unsigned reg_addr, u16 reg_val);
+void ag71xx_sgmii_flag_set(u8 flag);
+u8 ag71xx_sgmii_flag_get(void);
+void ag71xx_sgmii_set_link(
+	struct ag71xx *ag, ag71xx_sgmii_speed_t speed,
+	ag71xx_sgmii_duplex_t duplex);
+void ag71xx_sgmii_get_link(
+	struct ag71xx *ag, ag71xx_sgmii_speed_t *speed,
+	ag71xx_sgmii_duplex_t *duplex);
 
 #endif /* _AG71XX_H */

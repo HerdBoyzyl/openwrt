@@ -1327,7 +1327,8 @@ ar8327_init_port(struct ar8216_priv *priv, int port)
 	    ((port == 6) && pdata->pad6_cfg)) {
 	        ar8327_init_cpuport(priv, port);
 	} else {
-		t = AR8216_PORT_STATUS_LINK_AUTO;
+		t = priv->read(priv, AR8327_REG_PORT_STATUS(port));
+		t |= AR8216_PORT_STATUS_LINK_AUTO;
 		priv->write(priv, AR8327_REG_PORT_STATUS(port), t);
 	}
 
@@ -2367,10 +2368,7 @@ ar8216_read_status(struct phy_device *phydev)
 		for(i = 0; i < AR8X16_MAX_VLANS; i++) {
 			if(((port_status & priv->vlan_table[i]) != 0) &&
 					(priv->vlan_status[i] == 0)){
-				if(unlikely(priv->vlan_dev[i] == NULL)) {
-					ret = ar8216_get_vlan_dev(phydev, i);
-				} else
-					ret = 1;
+				ret = ar8216_get_vlan_dev(phydev, i);
 
 				if(ret == 1) {
 					netif_carrier_on(priv->vlan_dev[i]);
@@ -2378,10 +2376,7 @@ ar8216_read_status(struct phy_device *phydev)
 				}
 			} else if( (priv->vlan_table[i] != 0) &&
 					((port_status & priv->vlan_table[i]) == 0)) {
-				if(unlikely(priv->vlan_dev[i] == NULL)) {
-					ret = ar8216_get_vlan_dev(phydev, i);
-				} else
-					ret = 1;
+				ret = ar8216_get_vlan_dev(phydev, i);
 
 				if(ret == 1) {
 					netif_carrier_off(priv->vlan_dev[i]);
@@ -2418,6 +2413,28 @@ ar8216_read_status(struct phy_device *phydev)
 
 	return ret;
 }
+
+u32
+ar8216_phy_read(u32 address, u32 reg)
+{
+	struct ar8216_priv *priv = (struct ar8216_priv *)address;
+
+	if (priv == NULL)
+		return 0;
+	return priv->read(priv,reg);
+}
+EXPORT_SYMBOL(ar8216_phy_read);
+
+void
+ar8216_phy_write(u32 address, u32 reg,u32 data)
+{
+	struct ar8216_priv *priv = (struct ar8216_priv *)address;
+
+	if (priv == NULL)
+		return ;
+	priv->write(priv,(int )reg,data);
+}
+EXPORT_SYMBOL(ar8216_phy_write);
 
 static int
 ar8216_config_aneg(struct phy_device *phydev)

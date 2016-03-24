@@ -38,6 +38,9 @@ struct ag71xx_platform_data {
 	u8		has_ar8216:1;
 	u8		force_link:1;
 	u8		is_qca956x:1;
+	u8		is_qca9561:1;
+
+	u8		is_qca955x:1;
 
 	struct ag71xx_switch_platform_data *switch_data;
 
