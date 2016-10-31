@@ -4,7 +4,7 @@
 export PATH=/bin:/sbin:/usr/bin:/usr/sbin
 export HOME=$(grep -e "^${USER:-root}:" /etc/passwd | cut -d ":" -f 6)
 export HOME=${HOME:-/root}
-export PS1='\[\e[34;5m\]\u@\h\[\e[0m\]:\[\e[32;1m\]\w\[\e[0m\]\$ '
+export PS1='\[\e[1;34m\]\u@\h\[\e[0m\]:\[\e[1;32m\]\w\[\e[0m\]\$ '
 
 alias l='ls'
 alias ll='ls -l'
