@@ -1235,6 +1235,7 @@ config wifi-iface
 	option mode	ap
 	option ssid	OpenWrt_$(cat /sys/class/net/${dev}/address|awk -F ":" '{print $4""$5""$6 }'| tr a-z A-Z)
 	option encryption none
+	option disablecoext 1
 
 EOF
 	devidx=$(($devidx + 1))
